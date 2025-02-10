@@ -9,6 +9,58 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// Middleware to log requests and responses
+app.use(async (req, res, next) => {
+  const start = Date.now();
+  const { method, url, headers, body, query } = req;
+  const remoteAddress = req.ip;
+  const userAgent = headers['user-agent'];
+
+  // Capture the original send function
+  const originalSend = res.send.bind(res);
+
+  // Temporary storage for response body
+  let responseBody;
+
+  // Override the res.send function to capture response body
+  res.send = (chunk) => {
+      responseBody = chunk;
+      return originalSend(chunk);
+  };
+
+  res.on('finish', async () => {
+      const duration = Date.now() - start;
+      const { statusCode } = res;
+
+      // Insert log into the database
+      const queryText = `
+          INSERT INTO request_logs(
+              method, url, headers, body, query_params, response_status, response_body, remote_address, user_agent, timestamp
+          ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      `;
+      const values = [
+          method,
+          url,
+          headers,
+          body,
+          query,
+          statusCode,
+          responseBody,
+          remoteAddress,
+          userAgent,
+      ];
+
+      try {
+          await pool.query(queryText, values);
+      } catch (err) {
+          console.error('Error logging request:', err);
+      }
+  });
+
+  next();
+});
+
+
 async function getClosestStop(lat, lon) {
   const query = `
     SELECT stop_id,
