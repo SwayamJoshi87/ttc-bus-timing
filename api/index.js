@@ -52,7 +52,7 @@ function formatPredictionMessage(routeTag, predictions) {
     return `Bus ${routeTag} is arriving in ${first.minutes} minutes and ${first.seconds} seconds.`;
   }
 
-  return `Bus ${routeTag} is arriving in ${first.minutes} minutes, followed by another bus in ${second.minutes}.`;
+  return `Bus ${routeTag} is arriving in ${first.minutes} minutes, followed by another bus in ${second.minutes} minutes.`;
 }
 
 app.get("/", async (req, res) => {
@@ -111,7 +111,7 @@ app.get("/", async (req, res) => {
     } catch (logError) {
       console.error("Error inserting log into the database:", logError);
     }
-    
+
     res.send(message);
   } catch (error) {
     console.error("Error processing request:", error);
