@@ -1,7 +1,6 @@
 {
   "scripts": {
-    "start": "node api/index.js",
-    "vercel-build": "vercel"
+    "start": "node api/index.js"
   },
   "dependencies": {
     "express": "^4.21.2",
