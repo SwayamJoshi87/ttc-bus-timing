@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "start": "node api/index.js",
+    "vercel-build": "vercel"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1",
+    "xml2js": "^0.6.2"
+  }
+}
