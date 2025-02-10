@@ -9,62 +9,6 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Middleware to log requests and responses for the root path
-const logRootRequests = async (req, res, next) => {
-  if (req.path === '/') {
-      const start = Date.now();
-      const { method, url, headers, body, query } = req;
-      const remoteAddress = req.ip;
-      const userAgent = headers['user-agent'];
-
-      // Capture the original send function
-      const originalSend = res.send.bind(res);
-
-      // Temporary storage for response body
-      let responseBody;
-
-      // Override the res.send function to capture response body
-      res.send = (chunk) => {
-          responseBody = chunk;
-          return originalSend(chunk);
-      };
-
-      res.on('finish', async () => {
-          const duration = Date.now() - start;
-          const { statusCode } = res;
-
-          // Insert log into the database
-          const queryText = `
-              INSERT INTO request_logs(
-                  method, url, headers, body, query_params, response_status, response_body, remote_address, user_agent, timestamp
-              ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-          `;
-          const values = [
-              method,
-              url,
-              headers,
-              body,
-              query,
-              statusCode,
-              responseBody,
-              remoteAddress,
-              userAgent,
-          ];
-
-          try {
-              await pool.query(queryText, values);
-          } catch (err) {
-              console.error('Error logging request:', err);
-          }
-      });
-  }
-  next();
-};
-
-// Apply the middleware to the root route
-app.use('/', logRootRequests);
-
-
 async function getClosestStop(lat, lon) {
   const query = `
     SELECT stop_id,
@@ -154,6 +98,20 @@ app.get("/", async (req, res) => {
     }
 
     const message = formatPredictionMessage(routeTag, predictions);
+
+    // Log (lat, lon, route_tag, stop_id, and message) in the database
+    try {
+      await pool.query(
+        `
+        INSERT INTO request_logs (lat, lon, route_tag, stop_id, response_message)
+        VALUES ($1, $2, $3, $4, $5)
+        `,
+        [lat, lon, routeTag, stopId, message]
+      );
+    } catch (logError) {
+      console.error("Error inserting log into the database:", logError);
+    }
+    
     res.send(message);
   } catch (error) {
     console.error("Error processing request:", error);
